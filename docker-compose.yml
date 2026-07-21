@@ -1,0 +1,125 @@
+# =============================================================================
+# OSMI DATABASE - LABORATORIO DE VALIDACIÓN
+# =============================================================================
+#
+# Propósito: Validar las migraciones en un entorno aislado
+# Uso:       docker compose up -d
+#            make migrate-up
+#
+# Este archivo es IDÉNTICO al que se usará en:
+#   - Desarrollo local
+#   - CI/CD
+#   - EC2 Producción
+#
+# =============================================================================
+
+name: osmi-db-lab
+
+services:
+
+  # ===========================================================================
+  # PostgreSQL - Base de datos
+  # ===========================================================================
+  postgres:
+    image: postgis/postgis:18-3.6
+    container_name: osmi-db-postgres
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: osmidb
+      POSTGRES_USER: osmi
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256 --auth-local=scram-sha-256"
+
+    command:
+      - postgres
+      - -c
+      - max_connections=300
+      - -c
+      - shared_buffers=256MB
+      - -c
+      - effective_cache_size=1GB
+      - -c
+      - log_statement=ddl
+      - -c
+      - log_min_duration_statement=1000
+
+    ports:
+      - "5433:5432"  # <-- COMPLETAR: Puerto expuesto (5433 para evitar conflicto con EC2)
+
+    volumes:
+      - postgres_data:/var/lib/postgresql
+      - ./migrations:/migrations:ro
+      - ./seeds:/seeds:ro
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U osmi -d osmidb"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+    networks:
+      - osmi-db-network
+
+  # ===========================================================================
+  # golang-migrate - Ejecutor de migraciones (sin comando automático)
+  # ===========================================================================
+  migrate:
+    image: migrate/migrate:v4.17.0
+    container_name: osmi-db-migrate
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    volumes:
+      - ./migrations:/migrations
+
+    entrypoint: ["migrate"]
+
+    networks:
+      - osmi-db-network
+
+  # ===========================================================================
+  # pgAdmin - GUI para inspección (opcional, solo para validación)
+  # ===========================================================================
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: osmi-db-pgadmin
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@osmi.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin123}
+
+    ports:
+      - "5050:80"  # <-- COMPLETAR: Puerto para pgAdmin
+
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+
+    networks:
+      - osmi-db-network
+
+# =============================================================================
+# VOLUMENS
+# =============================================================================
+
+volumes:
+  postgres_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+
+# =============================================================================
+# REDES
+# =============================================================================
+
+networks:
+  osmi-db-network:
+    driver: bridge
+    name: osmi-db-network
