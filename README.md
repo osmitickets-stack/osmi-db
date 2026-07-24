@@ -54,23 +54,28 @@ osmi-db/
 ## Filosofía
 La base de datos nunca vuelve a modificarse manualmente.
 ```
-git push
-↓
-Docker Build
-↓
-GHCR
-↓
-Deploy Database
-↓
-docker compose pull migrate
-↓
-docker compose run migrate
-↓
-docker compose pull seed
-↓
-docker compose run seed
-↓
-PostgreSQL listo
+Git Push
+        │
+        ▼
+GitHub Actions
+        │
+        ├──────────────► osmi-db-migrate
+        │
+        └──────────────► osmi-db-seed
+                     │
+                     ▼
+                GHCR
+                     │
+                     ▼
+                  EC2
+                     │
+      docker compose pull
+                     │
+      migrate
+                     │
+      seed
+                     │
+                 PostgreSQL
 ```
 ---
 

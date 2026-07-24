@@ -1,11 +1,10 @@
-FROM migrate/migrate:v4.18.3
+FROM postgres:18-alpine
 
 WORKDIR /
 
-COPY migrations /migrations
 COPY seeds /seeds
 COPY scripts/seed.sh /seed.sh
 
 RUN chmod +x /seed.sh
 
-ENTRYPOINT ["migrate"]
+ENTRYPOINT ["/seed.sh"]

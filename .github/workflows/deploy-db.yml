@@ -6,23 +6,31 @@ on:
       - main
     paths:
       - 'migrations/**'
+      - 'seeds/**'
+      - 'scripts/**'
+      - 'Dockerfile.migrate'
+      - 'Dockerfile.seed'
       - '.github/workflows/deploy-db.yml'
+      - 'docker-compose.yml'
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Deploy migrations
+      - name: Deploy database
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
+            set -e
+
             cd /opt/osmi
 
             docker compose pull migrate
+            docker compose pull seed
 
             export DATABASE_URL=$(grep DATABASE_URL .env.production | cut -d '=' -f2-)
 
@@ -31,5 +39,4 @@ jobs:
               -database="$DATABASE_URL" \
               up
 
-            docker compose pull seed
             docker compose run --rm seed
