@@ -151,11 +151,10 @@ END $$;
 DO $$
 DECLARE
     v_event_public_uuid UUID;
-    v_event_id BIGINT;
 BEGIN
-    SELECT public_uuid, id INTO v_event_public_uuid, v_event_id FROM ticketing.events WHERE slug = 'osmi-festival-demo';
+    SELECT public_uuid INTO v_event_public_uuid FROM ticketing.events WHERE slug = 'osmi-festival-demo';
 
-    IF v_event_id IS NOT NULL THEN
+    IF v_event_public_uuid IS NOT NULL THEN
         INSERT INTO ticketing.categories (
             public_uuid,
             event_id,
@@ -168,10 +167,10 @@ BEGIN
             is_active,
             sort_order
         ) VALUES
-            (gen_random_uuid(), v_event_id, 'VIP', 'vip', 'Zona VIP con acceso preferente', 'star', '#F1C40F', 100, true, 1),
-            (gen_random_uuid(), v_event_id, 'General', 'general', 'Zona general', 'users', '#3498DB', 500, true, 2),
-            (gen_random_uuid(), v_event_id, 'Palco', 'palco', 'Palcos con vista privilegiada', 'crown', '#9B59B6', 50, true, 3),
-            (gen_random_uuid(), v_event_id, 'Backstage', 'backstage', 'Acceso tras bambalinas', 'lock', '#2ECC71', 20, true, 4);
+            (gen_random_uuid(), v_event_public_uuid, 'VIP', 'vip', 'Zona VIP con acceso preferente', 'star', '#F1C40F', 100, true, 1),
+            (gen_random_uuid(), v_event_public_uuid, 'General', 'general', 'Zona general', 'users', '#3498DB', 500, true, 2),
+            (gen_random_uuid(), v_event_public_uuid, 'Palco', 'palco', 'Palcos con vista privilegiada', 'crown', '#9B59B6', 50, true, 3),
+            (gen_random_uuid(), v_event_public_uuid, 'Backstage', 'backstage', 'Acceso tras bambalinas', 'lock', '#2ECC71', 20, true, 4);
     END IF;
 END $$;
 
