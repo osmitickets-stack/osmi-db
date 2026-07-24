@@ -7,3 +7,5 @@ COPY seeds /seeds
 COPY scripts/seed.sh /seed.sh
 
 RUN chmod +x /seed.sh
+
+ENTRYPOINT ["migrate"]
