@@ -11,7 +11,8 @@ on:
       - 'Dockerfile.migrate'
       - 'Dockerfile.seed'
       - '.github/workflows/deploy-db.yml'
-      - 'docker-compose.yml'
+
+  workflow_dispatch:
 
 jobs:
   deploy:

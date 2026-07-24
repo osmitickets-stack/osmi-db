@@ -16,7 +16,7 @@ psql \
     -h postgres \
     -U osmi \
     -d osmidb \
-    -f /seeds/002_catalog.sql
+    -f /seeds/002_catalogs.sql
 
 if [ -f /seeds/003_demo.sql ]; then
     echo "Running demo seeds..."
