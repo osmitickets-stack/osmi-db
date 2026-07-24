@@ -53,26 +53,25 @@ osmi-db/
 
 ## Filosofía
 La base de datos nunca vuelve a modificarse manualmente.
-Todo cambio estructural sigue siempre el mismo flujo:
 ```
-osmi-db
-    ↓
-GitHub
-    ↓
-GitHub Actions
-    ↓
-Docker Image (migrations + seeds)
-    ↓
+git push
+↓
+Docker Build
+↓
 GHCR
-    ↓
-EC2
-    ↓
+↓
+Deploy Database
+↓
 docker compose pull migrate
-    ↓
-docker compose run migrate up
-
-PostgreSQL nunca es el origen del esquema. El origen siempre será este repositorio.
-
+↓
+docker compose run migrate
+↓
+docker compose pull seed
+↓
+docker compose run seed
+↓
+PostgreSQL listo
+```
 ---
 
 ## Estrategia de migraciones

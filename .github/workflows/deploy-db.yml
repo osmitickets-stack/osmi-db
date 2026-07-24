@@ -30,3 +30,6 @@ jobs:
               -path=/migrations \
               -database="$DATABASE_URL" \
               up
+
+            docker compose pull seed
+            docker compose run --rm seed
