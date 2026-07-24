@@ -4,6 +4,11 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'migrations/**'
+      - 'seeds/**'
+      - 'Dockerfile'
+      - '.github/workflows/docker.yml'
 
   workflow_dispatch:
 

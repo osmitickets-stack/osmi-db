@@ -2,7 +2,8 @@ name: Deploy Database
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
     paths:
       - 'migrations/**'
       - '.github/workflows/deploy-db.yml'
@@ -12,20 +13,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Copy migrations to EC2
-        uses: appleboy/scp-action@v1
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          source: "migrations/"
-          target: "/opt/osmi/"
-          strip_components: 0
-
-      - name: Run migrations on EC2
+      - name: Deploy migrations
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -33,5 +21,12 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             cd /opt/osmi
+
+            docker compose pull migrate
+
             export DATABASE_URL=$(grep DATABASE_URL .env.production | cut -d '=' -f2-)
-            docker compose run --rm migrate -path=/migrations -database="$DATABASE_URL" up
+
+            docker compose run --rm migrate \
+              -path=/migrations \
+              -database="$DATABASE_URL" \
+              up
