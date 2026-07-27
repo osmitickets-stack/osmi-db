@@ -4,27 +4,22 @@ set -e
 
 export PGPASSWORD="$POSTGRES_PASSWORD"
 
-echo "Running system seeds..."
-psql \
-    -h postgres \
-    -U osmi \
-    -d osmidb \
-    -f /seeds/001_system.sql
+echo "========================================"
+echo "Running database seeds..."
+echo "========================================"
 
-echo "Running catalog seeds..."
-psql \
-    -h postgres \
-    -U osmi \
-    -d osmidb \
-    -f /seeds/002_catalogs.sql
-
-if [ -f /seeds/003_demo.sql ]; then
-    echo "Running demo seeds..."
+for file in /seeds/*.sql
+do
+    echo ""
+    echo "Executing $(basename "$file")..."
     psql \
         -h postgres \
         -U osmi \
         -d osmidb \
-        -f /seeds/003_demo.sql
-fi
+        -f "$file"
+done
 
-echo "Seeds completed."
+echo ""
+echo "========================================"
+echo "All seeds completed successfully."
+echo "========================================"
