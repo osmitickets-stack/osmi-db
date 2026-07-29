@@ -27,13 +27,33 @@ osmi-db/
 │   ├── 3.9_functions.md
 │   └── 3.10_architecture.md
 │   └── 3.11_domains.md
-│
 ├── migrations/                           #    Archivos versionados de migración (.up.sql / .down.sql)
 │   ├── 000001_initial_schema.up.sql
 │   ├── 000001_initial_schema.down.sql
-│   ├── 000002_*.up.sql
-│   └── 000002_*.down.sql
-
+│   ├── 000002_auth.up.sql
+│   └── 000002_auth.down.sql
+│   ├── 000003_crm.down.sql
+│   └── 000003_crm.up.sql
+│   ├── 000004_ticketing.down.sql
+│   └── 000004_ticketing.up.sql
+│   ├── 000005_billing.down.sql
+│   └── 000005_billing.up.sql
+│   ├── 000006_fiscal.down.sql
+│   └── 000006_fiscal.up.sql
+│   ├── 000007_notifications.down.sql
+│   └── 000007_notifications.up.sql
+│   ├── 000008_analytics.down.sql
+│   └── 000008_analytics.up.sql
+│   ├── 000009_audit.down.sql
+│   └── 000009_audit.up.sql
+│   ├── 000010_integration.down.sql
+│   └── 000010_integration.up.sql
+│   ├── 000011_event_types.down.sql
+│   └── 000011_event_types.up.sql
+│   ├── 000012_add_global_tables.down.sql
+│   └── 000012_add_global_tables.up.sql
+│   ├── 
+│   └── 
 ├── seeds/                                #    Datos iniciales opcionales
 │   ├── development.sql
 │   └── testing.sql
@@ -55,26 +75,19 @@ osmi-db/
 La base de datos nunca vuelve a modificarse manualmente.
 ```
 git push
-        │
         ▼
 Docker Build
-        │
         ▼
 GHCR
-        │
         ▼
 Deploy Database
-        │
         ▼
 docker compose pull migrate
 docker compose pull seed
-        │
         ▼
 Migraciones
-        │
         ▼
 Seeds
-        │
         ▼
 PostgreSQL actualizado
 ```

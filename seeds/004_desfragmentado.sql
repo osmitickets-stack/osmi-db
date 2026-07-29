@@ -1,11 +1,15 @@
 -- =============================================================================
 -- OSMI - Seeds de Producción
 -- 004_desfragmentado.sql
+-- IDEMPOTENTE
 -- =============================================================================
 --
 -- Propósito: Datos reales del artista Desfragmentado
 -- Estos datos son PERMANENTES y se usan en producción
 -- IDEMPOTENTE: se puede ejecutar múltiples veces sin errores
+--
+-- Ubicación: Av. Chapultepec #605, Colonia Americana, Guadalajara, Jalisco
+-- Coordenadas: 20.733479525052278, -103.3811594054298
 --
 -- =============================================================================
 
@@ -53,7 +57,7 @@ INSERT INTO ticketing.organizers (
     'Desfragmentado',
     'desfragmentado',
     'desfragmentado@osmi.com',
-    '+521234567890',
+    '3345998987',
     'Artista y productor musical. Especializado en colaboraciones únicas.',
     'https://res.cloudinary.com/dkasxv8fj/image/upload/v1779219665/WhatsApp_Image_2026-05-09_at_2.02.54_PM_mxqy93.jpg',
     true,
@@ -71,7 +75,7 @@ INSERT INTO ticketing.organizers (
 ) ON CONFLICT (slug) DO NOTHING;
 
 -- =============================================================================
--- 3. VENUE (ESTUDIO DE GRABACIÓN / VIRTUAL)
+-- 3. VENUE (ESTUDIO DE GRABACIÓN)
 -- =============================================================================
 
 INSERT INTO ticketing.venues (
@@ -84,6 +88,8 @@ INSERT INTO ticketing.venues (
     city,
     state,
     country,
+    latitude,
+    longitude,
     capacity,
     is_active,
     images
@@ -93,11 +99,13 @@ INSERT INTO ticketing.venues (
     'estudio-frequency404',
     'studio',
     'Estudio de grabación profesional con equipo casero profesional.',
-    'paseo vistahermosa 2240',
+    'Av. Chapultepec #605, Colonia Americana',
     'Guadalajara',
     'Jalisco',
     'MX',
-    7000,
+    20.733479525052278,
+    -103.3811594054298,
+    100,
     true,
     '[
         "https://res.cloudinary.com/dkasxv8fj/image/upload/v1779219665/WhatsApp_Image_2026-05-09_at_2.02.54_PM_mxqy93.jpg",
@@ -141,6 +149,8 @@ BEGIN
             city,
             state,
             country,
+            latitude,
+            longitude,
             status,
             visibility,
             is_featured,
@@ -183,10 +193,12 @@ BEGIN
             NOW() + INTERVAL '1 day',
             NOW() + INTERVAL '1 day' + INTERVAL '365 days',
             'Estudio Frequency404',
-            'paseo vistahermosa 2240',
+            'Av. Chapultepec #605, Colonia Americana',
             'Guadalajara',
             'Jalisco',
             'MX',
+            20.733479525052278,
+            -103.3811594054298,
             'published',
             'public',
             true,
@@ -418,6 +430,42 @@ BEGIN
                         '["1 hora de grabación", "Producción vocal", "Ingeniero de sonido", "Mezcla vocal"]'::jsonb
                     );
                 END IF;
+
+                -- =================================================================
+                -- 7. TICKET TYPE DE PRUEBA - FOTO CON DESFRAGMENTADO (1 PESO)
+                -- =================================================================
+                IF NOT EXISTS (SELECT 1 FROM ticketing.ticket_types WHERE event_id = v_event_id AND name = 'Sesión de una foto con Desfra') THEN
+                    INSERT INTO ticketing.ticket_types (
+                        public_uuid,
+                        event_id,
+                        name,
+                        description,
+                        base_price,
+                        currency,
+                        total_quantity,
+                        max_per_order,
+                        min_per_order,
+                        sale_starts_at,
+                        is_active,
+                        tax_rate,
+                        benefits
+                    ) VALUES (
+                        gen_random_uuid(),
+                        v_event_id,
+                        'Sesión de una foto con Desfra',
+                        'Sesión de una foto junto al artista. Ideal para conocerlo.',
+                        10,
+                        'MXN',
+                        1500,
+                        1,
+                        1,
+                        NOW(),
+                        true,
+                        0.16,
+                        '["1 foto", "Acompañamiento del artista", "Sesión de 5 minutos"]'::jsonb
+                    );
+                END IF;
+
             END IF;
         END;
     END IF;
