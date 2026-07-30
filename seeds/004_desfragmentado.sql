@@ -1,16 +1,14 @@
 -- =============================================================================
 -- OSMI - Seeds de Producción
 -- 004_desfragmentado.sql
--- IDEMPOTENTE (CON ON CONFLICT DO UPDATE)
+-- IDEMPOTENTE
 -- =============================================================================
 --
 -- Propósito: Datos reales del artista Desfragmentado
 -- Estos datos son PERMANENTES y se usan en producción
--- IDEMPOTENTE: se puede ejecutar múltiples veces sin errores
--- Si el evento ya existe, se ACTUALIZA con los nuevos valores
 --
 -- Ubicación: Av. Chapultepec #605, Colonia Americana, Guadalajara, Jalisco
--- Coordenadas: 20.733479525052278, -103.3811594054298
+-- Coordenadas: 20.666674764832464, -103.3678586865071
 --
 -- =============================================================================
 
@@ -104,8 +102,8 @@ INSERT INTO ticketing.venues (
     'Guadalajara',
     'Jalisco',
     'MX',
-    20.733479525052278,
-    -103.3811594054298,
+    20.666674764832464,
+    -103.3678586865071,
     100,
     true,
     '[
@@ -131,7 +129,6 @@ BEGIN
 
     -- ========================================================================
     -- 4.1 EVENTO - UPSERT (INSERT + UPDATE)
-    -- Si existe, actualiza; si no, inserta.
     -- ========================================================================
 
     INSERT INTO ticketing.events (
@@ -199,8 +196,8 @@ BEGIN
         'Guadalajara',
         'Jalisco',
         'MX',
-        20.733479525052278,
-        -103.3811594054298,
+        20.666674764832464,
+        -103.3678586865071,
         'published',
         'public',
         true,
@@ -250,7 +247,7 @@ BEGIN
     RETURNING public_uuid INTO v_event_public_uuid;
 
     -- =========================================================================
-    -- 5. CATEGORÍAS (NIVELES DE COLABORACIÓN) - IDEMPOTENTE
+    -- 5. CATEGORÍAS (NIVELES DE COLABORACIÓN)
     -- =========================================================================
 
     IF v_event_public_uuid IS NOT NULL THEN
@@ -318,7 +315,7 @@ BEGIN
     END IF;
 
     -- =========================================================================
-    -- 6. TICKET TYPES (SERVICIOS) - IDEMPOTENTE
+    -- 6. TICKET TYPES (SERVICIOS)
     -- =========================================================================
 
     IF v_event_public_uuid IS NOT NULL THEN
