@@ -1,12 +1,13 @@
 -- =============================================================================
 -- OSMI - Seeds de Producción
 -- 004_desfragmentado.sql
--- IDEMPOTENTE
+-- IDEMPOTENTE (CON ON CONFLICT DO UPDATE)
 -- =============================================================================
 --
 -- Propósito: Datos reales del artista Desfragmentado
 -- Estos datos son PERMANENTES y se usan en producción
 -- IDEMPOTENTE: se puede ejecutar múltiples veces sin errores
+-- Si el evento ya existe, se ACTUALIZA con los nuevos valores
 --
 -- Ubicación: Av. Chapultepec #605, Colonia Americana, Guadalajara, Jalisco
 -- Coordenadas: 20.733479525052278, -103.3811594054298
@@ -128,49 +129,50 @@ BEGIN
     SELECT id INTO v_venue_id FROM ticketing.venues WHERE slug = 'estudio-frequency404';
     SELECT id INTO v_event_type_id FROM catalog.event_types WHERE slug = 'experiencias';
 
-    -- Verificar si el evento ya existe
-    SELECT public_uuid INTO v_event_public_uuid FROM ticketing.events WHERE slug = 'colaboracion-desfragmentado';
+    -- ========================================================================
+    -- 4.1 EVENTO - UPSERT (INSERT + UPDATE)
+    -- Si existe, actualiza; si no, inserta.
+    -- ========================================================================
 
-    IF v_event_public_uuid IS NULL THEN
-        INSERT INTO ticketing.events (
-            public_uuid,
-            organizer_id,
-            venue_id,
-            event_type_id,
-            slug,
-            name,
-            short_description,
-            description,
-            timezone,
-            starts_at,
-            ends_at,
-            venue_name,
-            address_full,
-            city,
-            state,
-            country,
-            latitude,
-            longitude,
-            status,
-            visibility,
-            is_featured,
-            is_free,
-            max_attendees,
-            min_attendees,
-            tags,
-            cover_image_url,
-            banner_image_url,
-            settings,
-            published_at
-        ) VALUES (
-            gen_random_uuid(),
-            v_organizer_id,
-            v_venue_id,
-            v_event_type_id,
-            'colaboracion-desfragmentado',
-            'Colabora con Desfragmentado',
-            'Grabá una canción, produce un tema o colaborá con el artista',
-            'Desfragmentado abre sus puertas para colaboraciones únicas. Podés grabar una canción, producir un tema o tener una sesión de composición con el artista. Cada colaboración es única y se adapta a tus necesidades.
+    INSERT INTO ticketing.events (
+        public_uuid,
+        organizer_id,
+        venue_id,
+        event_type_id,
+        slug,
+        name,
+        short_description,
+        description,
+        timezone,
+        starts_at,
+        ends_at,
+        venue_name,
+        address_full,
+        city,
+        state,
+        country,
+        latitude,
+        longitude,
+        status,
+        visibility,
+        is_featured,
+        is_free,
+        max_attendees,
+        min_attendees,
+        tags,
+        cover_image_url,
+        banner_image_url,
+        settings,
+        published_at
+    ) VALUES (
+        gen_random_uuid(),
+        v_organizer_id,
+        v_venue_id,
+        v_event_type_id,
+        'colaboracion-desfragmentado',
+        'Colabora con Desfragmentado',
+        'Grabá una canción, produce un tema o colaborá con el artista',
+        'Desfragmentado abre sus puertas para colaboraciones únicas. Podés grabar una canción, producir un tema o tener una sesión de composición con el artista. Cada colaboración es única y se adapta a tus necesidades.
 
 🎵 **Opciones de colaboración:**
 - Grabación de una canción completa
@@ -189,39 +191,66 @@ BEGIN
 - Tener la letra y melodía definida
 - Contar con los músicos necesarios (si aplica)
 - Llegar 30 minutos antes de la sesión',
-            'America/Mexico_City',
-            NOW() + INTERVAL '1 day',
-            NOW() + INTERVAL '1 day' + INTERVAL '365 days',
-            'Estudio Frequency404',
-            'Av. Chapultepec #605, Colonia Americana',
-            'Guadalajara',
-            'Jalisco',
-            'MX',
-            20.733479525052278,
-            -103.3811594054298,
-            'published',
-            'public',
-            true,
-            false,
-            100,
-            1,
-            '["colaboracion", "grabacion", "produccion", "musica", "desfragmentado"]'::jsonb,
-            'https://res.cloudinary.com/dkasxv8fj/image/upload/v1779219665/WhatsApp_Image_2026-05-09_at_2.02.54_PM_mxqy93.jpg',
-            'https://res.cloudinary.com/dkasxv8fj/image/upload/v1779219665/WhatsApp_Image_2026-05-09_at_2.02.54_PM_mxqy93.jpg',
-            '{
-                "allow_cancellations": true,
-                "cancellation_deadline_hours": 48,
-                "allow_transfers": true,
-                "require_id": true,
-                "checkin_method": "qr_code"
-            }'::jsonb,
-            NOW()
-        )
-        RETURNING public_uuid INTO v_event_public_uuid;
-    END IF;
+        'America/Mexico_City',
+        NOW() + INTERVAL '1 day',
+        NOW() + INTERVAL '1 day' + INTERVAL '365 days',
+        'Estudio Frequency404',
+        'Av. Chapultepec #605, Colonia Americana',
+        'Guadalajara',
+        'Jalisco',
+        'MX',
+        20.733479525052278,
+        -103.3811594054298,
+        'published',
+        'public',
+        true,
+        false,
+        100,
+        1,
+        '["colaboracion", "grabacion", "produccion", "musica", "desfragmentado"]'::jsonb,
+        'https://res.cloudinary.com/dkasxv8fj/image/upload/v1779219665/WhatsApp_Image_2026-05-09_at_2.02.54_PM_mxqy93.jpg',
+        'https://res.cloudinary.com/dkasxv8fj/image/upload/v1779219665/WhatsApp_Image_2026-05-09_at_2.02.54_PM_mxqy93.jpg',
+        '{
+            "allow_cancellations": true,
+            "cancellation_deadline_hours": 48,
+            "allow_transfers": true,
+            "require_id": true,
+            "checkin_method": "qr_code"
+        }'::jsonb,
+        NOW()
+    ) ON CONFLICT (slug) DO UPDATE SET
+        organizer_id = EXCLUDED.organizer_id,
+        venue_id = EXCLUDED.venue_id,
+        event_type_id = EXCLUDED.event_type_id,
+        name = EXCLUDED.name,
+        short_description = EXCLUDED.short_description,
+        description = EXCLUDED.description,
+        timezone = EXCLUDED.timezone,
+        starts_at = EXCLUDED.starts_at,
+        ends_at = EXCLUDED.ends_at,
+        venue_name = EXCLUDED.venue_name,
+        address_full = EXCLUDED.address_full,
+        city = EXCLUDED.city,
+        state = EXCLUDED.state,
+        country = EXCLUDED.country,
+        latitude = EXCLUDED.latitude,
+        longitude = EXCLUDED.longitude,
+        status = EXCLUDED.status,
+        visibility = EXCLUDED.visibility,
+        is_featured = EXCLUDED.is_featured,
+        is_free = EXCLUDED.is_free,
+        max_attendees = EXCLUDED.max_attendees,
+        min_attendees = EXCLUDED.min_attendees,
+        tags = EXCLUDED.tags,
+        cover_image_url = EXCLUDED.cover_image_url,
+        banner_image_url = EXCLUDED.banner_image_url,
+        settings = EXCLUDED.settings,
+        published_at = EXCLUDED.published_at,
+        updated_at = NOW()
+    RETURNING public_uuid INTO v_event_public_uuid;
 
     -- =========================================================================
-    -- 5. CATEGORÍAS (NIVELES DE COLABORACIÓN)
+    -- 5. CATEGORÍAS (NIVELES DE COLABORACIÓN) - IDEMPOTENTE
     -- =========================================================================
 
     IF v_event_public_uuid IS NOT NULL THEN
@@ -289,7 +318,7 @@ BEGIN
     END IF;
 
     -- =========================================================================
-    -- 6. TICKET TYPES (SERVICIOS)
+    -- 6. TICKET TYPES (SERVICIOS) - IDEMPOTENTE
     -- =========================================================================
 
     IF v_event_public_uuid IS NOT NULL THEN
@@ -431,9 +460,7 @@ BEGIN
                     );
                 END IF;
 
-                -- =================================================================
-                -- 7. TICKET TYPE DE PRUEBA - FOTO CON DESFRAGMENTADO (1 PESO)
-                -- =================================================================
+                -- Foto con Desfragmentado (Prueba de compra)
                 IF NOT EXISTS (SELECT 1 FROM ticketing.ticket_types WHERE event_id = v_event_id AND name = 'Sesión de una foto con Desfra') THEN
                     INSERT INTO ticketing.ticket_types (
                         public_uuid,
