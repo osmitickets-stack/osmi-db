@@ -1,21 +1,26 @@
 name: Deploy Database
 
 on:
-  push:
+  workflow_run:
+    workflows:
+      - Docker Build & Publish
+    types:
+      - completed
     branches:
       - main
-    paths:
-      - 'migrations/**'
-      - 'seeds/**'
-      - 'scripts/**'
-      - 'Dockerfile.migrate'
-      - 'Dockerfile.seed'
-      - '.github/workflows/deploy-db.yml'
 
   workflow_dispatch:
 
+concurrency:
+  group: deploy-database-production
+  cancel-in-progress: true
+
 jobs:
   deploy:
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+
     runs-on: ubuntu-latest
 
     steps:
@@ -30,14 +35,39 @@ jobs:
 
             cd /opt/osmi
 
+            echo "Pulling database deployment images..."
             docker compose pull migrate
             docker compose pull seed
 
-            export DATABASE_URL=$(grep DATABASE_URL .env.production | cut -d '=' -f2-)
+            echo "Starting database dependencies..."
+            docker compose up -d postgres redis
 
+            echo "Waiting for PostgreSQL..."
+            until docker compose exec -T postgres \
+              pg_isready -U osmi -d osmidb >/dev/null 2>&1
+            do
+              sleep 2
+            done
+
+            export DATABASE_URL="$(grep '^DATABASE_URL=' .env.production | cut -d '=' -f2-)"
+
+            if [ -z "$DATABASE_URL" ]; then
+              echo "DATABASE_URL is missing"
+              exit 1
+            fi
+
+            echo "Running pending migrations..."
             docker compose run --rm migrate \
               -path=/migrations \
               -database="$DATABASE_URL" \
               up
 
+            echo "Running database seeds..."
             docker compose run --rm seed
+
+            echo "Database version:"
+            docker compose exec -T postgres \
+              psql -U osmi -d osmidb \
+              -c "SELECT version, dirty FROM schema_migrations;"
+
+            echo "Database deployment completed."
