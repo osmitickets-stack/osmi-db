@@ -1,73 +1,19 @@
-name: Deploy Database
+name: Database production release gate
 
+# A merge may publish an immutable migrate image, but must never apply
+# migrations, run seeds, or recreate database dependencies automatically.
 on:
-  workflow_run:
-    workflows:
-      - Docker Build & Publish
-    types:
-      - completed
-    branches:
-      - main
-
   workflow_dispatch:
 
-concurrency:
-  group: deploy-database-production
-  cancel-in-progress: false
+permissions:
+  contents: read
 
 jobs:
-  deploy:
-    if: >
-      github.event_name == 'workflow_dispatch' ||
-      github.event.workflow_run.conclusion == 'success'
-
+  instructions:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Deploy database
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            set -e
-
-            cd /opt/osmi
-
-            echo "Pulling database deployment images..."
-            docker compose pull migrate
-            docker compose pull seed
-
-            echo "Starting database dependencies..."
-            docker compose up -d postgres redis
-
-            echo "Waiting for PostgreSQL..."
-            until docker compose exec -T postgres \
-              pg_isready -U osmi -d osmidb >/dev/null 2>&1
-            do
-              sleep 2
-            done
-
-            export DATABASE_URL="$(grep '^DATABASE_URL=' .env.production | cut -d '=' -f2-)"
-
-            if [ -z "$DATABASE_URL" ]; then
-              echo "DATABASE_URL is missing"
-              exit 1
-            fi
-
-            echo "Running pending migrations..."
-            docker compose run --rm migrate \
-              -path=/migrations \
-              -database="$DATABASE_URL" \
-              up
-
-            echo "Running database seeds..."
-            docker compose run --rm seed
-
-            echo "Database version:"
-            docker compose exec -T postgres \
-              psql -U osmi -d osmidb \
-              -c "SELECT version, dirty FROM schema_migrations;"
-
-            echo "Database deployment completed."
+      - name: Require the reviewed one-migration procedure
+        run: |
+          echo "Production migration is intentionally manual."
+          echo "Use the verified image digest, backup and isolated restore, version precheck, and up 1."
+          echo "Do not run seeds or start PostgreSQL or Redis as part of a migration."
