@@ -7,16 +7,28 @@ on:
     paths:
       - 'migrations/**'
       - 'seeds/**'
-      - 'scripts/**'
+      - 'scripts/seed.sh'
       - 'Dockerfile.migrate'
       - 'Dockerfile.seed'
       - '.github/workflows/docker.yml'
 
   workflow_dispatch:
+    inputs:
+      image:
+        description: Image to publish
+        type: choice
+        options:
+          - migrate
+          - seed
+          - both
+        default: migrate
+      promote_latest:
+        description: Explicitly update latest (main only)
+        type: boolean
+        default: false
 
 permissions:
   contents: read
-  packages: write
 
 concurrency:
   group: docker-${{ github.workflow }}-${{ github.ref }}
@@ -26,8 +38,64 @@ env:
   REGISTRY: ghcr.io
 
 jobs:
+  plan:
+    name: Select changed images
+    runs-on: ubuntu-latest
+    outputs:
+      migrate: ${{ steps.select.outputs.migrate }}
+      seed: ${{ steps.select.outputs.seed }}
+    steps:
+      - name: Checkout repository history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Select images
+        id: select
+        env:
+          EVENT: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+          IMAGE: ${{ inputs.image }}
+          PROMOTE_LATEST: ${{ inputs.promote_latest }}
+        run: |
+          set -euo pipefail
+          migrate=false
+          seed=false
+          if [[ "$EVENT" == workflow_dispatch ]]; then
+            if [[ "$PROMOTE_LATEST" == true && "$REF" != refs/heads/main ]]; then
+              echo 'latest promotion is allowed only from main' >&2
+              exit 1
+            fi
+            case "$IMAGE" in
+              migrate) migrate=true ;;
+              seed) seed=true ;;
+              both) migrate=true; seed=true ;;
+              *) echo 'Invalid image selection' >&2; exit 1 ;;
+            esac
+          else
+            [[ "$EVENT" == push && "$REF" == refs/heads/main ]]
+            git cat-file -e "${BEFORE}^{commit}"
+            git cat-file -e "${AFTER}^{commit}"
+            changed="$(git diff --name-only "$BEFORE" "$AFTER")"
+            while IFS= read -r path; do
+              case "$path" in
+                migrations/*|Dockerfile.migrate|.github/workflows/docker.yml) migrate=true ;;
+                seeds/*|scripts/seed.sh|Dockerfile.seed) seed=true ;;
+              esac
+            done <<< "$changed"
+          fi
+          echo "migrate=$migrate" >> "$GITHUB_OUTPUT"
+          echo "seed=$seed" >> "$GITHUB_OUTPUT"
+
 
   migrate:
+    needs: plan
+    if: needs.plan.outputs.migrate == 'true'
+    permissions:
+      contents: read
+      packages: write
 
     name: Build & Publish Migrate Image
 
@@ -55,14 +123,15 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ghcr.io/osmitickets-stack/osmi-db-migrate
+          flavor: latest=false
           tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
-            type=ref,event=branch
-            type=sha
+            type=raw,value=sha-${{ github.sha }}-run-${{ github.run_id }}-${{ github.run_attempt }}
+            type=raw,value=latest,enable=${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.promote_latest }}
           labels: |
             org.opencontainers.image.revision=${{ github.sha }}
 
       - name: Build & Push
+        id: build
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -75,11 +144,22 @@ jobs:
           cache-to: type=gha,mode=max
           provenance: false
 
+      - name: Record image digest
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          test -n "$DIGEST"
+          echo "Migrate image: ghcr.io/osmitickets-stack/osmi-db-migrate@$DIGEST" >> "$GITHUB_STEP_SUMMARY"
+
   seed:
+    needs: plan
+    permissions:
+      contents: read
+      packages: write
 
     name: Build & Publish Seed Image
 
-    if: github.ref == 'refs/heads/main'
+    if: needs.plan.outputs.seed == 'true'
 
     runs-on: ubuntu-latest
 
@@ -105,12 +185,15 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ghcr.io/osmitickets-stack/osmi-db-seed
+          flavor: latest=false
           tags: |
-            type=raw,value=latest
-            type=ref,event=branch
-            type=sha
+            type=raw,value=sha-${{ github.sha }}-run-${{ github.run_id }}-${{ github.run_attempt }}
+            type=raw,value=latest,enable=${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.promote_latest }}
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
 
       - name: Build & Push
+        id: build
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -122,3 +205,10 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           provenance: false
+
+      - name: Record image digest
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          test -n "$DIGEST"
+          echo "Seed image: ghcr.io/osmitickets-stack/osmi-db-seed@$DIGEST" >> "$GITHUB_STEP_SUMMARY"
